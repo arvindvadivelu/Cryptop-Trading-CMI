@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>CMI SNIPER | BTCUSD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #09090b; color: #fff; font-family: ui-monospace, monospace; overflow-x: hidden; }
+        .panel { background: #111113; border: 1px solid #27272a; border-radius: 12px; }
+        .btn { padding: 12px; border-radius: 8px; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; border: 1px solid #27272a; }
+        .btn:hover { background: rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body class="p-8 flex flex-col gap-6 max-w-6xl mx-auto">
+
+    <div class="grid grid-cols-4 gap-4">
+        <button onclick="fetch('/bias/bull')" class="btn border-emerald-500/30 text-emerald-500 bg-emerald-500/5">Force Long Bias</button>
+        <button onclick="fetch('/bias/reset')" class="btn text-gray-400">Auto Scout Mode</button>
+        <button onclick="fetch('/bias/bear')" class="btn border-rose-500/30 text-rose-500 bg-rose-500/5">Force Short Bias</button>
+        <button onclick="fetch('/portfolio/reset')" class="btn border-cyan-500/30 text-cyan-400 bg-cyan-500/5">Reset Balance ($20)</button>
+    </div>
+
+    <div class="flex justify-between items-center panel p-8">
+        <div>
+            <h1 class="text-2xl font-black italic tracking-tighter">CMI <span class="text-cyan-500">SNIPER</span> [BTCUSD]</h1>
+            <div class="flex items-center gap-3 mt-2">
+                <span class="text-[10px] text-gray-500 uppercase font-bold">H1 Trend Bias:</span>
+                <span id="bias" class="text-[10px] font-bold px-3 py-1 bg-black rounded border border-gray-800">NEUTRAL</span>
+            </div>
+        </div>
+        <div class="text-right">
+            <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Total Net Equity</p>
+            <h2 id="balance" class="text-4xl font-mono font-bold">$20.0000</h2>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-6">
+        <div class="panel p-6 border-t-2 border-t-cyan-500">
+            <p class="text-[10px] text-gray-500 mb-2 uppercase">Win Rate</p>
+            <h3 id="wr" class="text-3xl font-bold text-cyan-400">0.0%</h3>
+        </div>
+        <div class="panel p-6 border-t-2 border-t-emerald-500">
+            <p class="text-[10px] text-gray-500 mb-2 uppercase">Profit Snipes</p>
+            <h3 id="wins" class="text-3xl font-bold text-emerald-400">0</h3>
+        </div>
+        <div class="panel p-6 border-t-2 border-t-rose-500">
+            <p class="text-[10px] text-gray-500 mb-2 uppercase">Risk Exits</p>
+            <h3 id="losses" class="text-3xl font-bold text-rose-400">0</h3>
+        </div>
+    </div>
+
+    <div class="panel p-8 flex-grow">
+        <div class="flex justify-between mb-6">
+            <h3 class="text-xs font-bold uppercase text-gray-500">Active Sniper Positions</h3>
+            <span id="price" class="text-xs font-mono text-cyan-500">BTC: $0.00</span>
+        </div>
+        <table class="w-full text-xs text-left">
+            <thead class="text-gray-600 border-b border-gray-800 uppercase tracking-widest">
+                <tr><th class="pb-4">Side</th><th class="pb-4">Entry</th><th class="pb-4">Stop Loss</th><th class="pb-4">Take Profit</th><th class="pb-4 text-right">Status</th></tr>
+            </thead>
+            <tbody id="trade-list"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const ws = new WebSocket(`ws://${window.location.host}/ws/swarm`);
+        ws.onmessage = (e) => {
+            const d = JSON.parse(e.data);
+            document.getElementById('balance').innerText = `$${d.portfolio.toFixed(4)}`;
+            document.getElementById('wr').innerText = `${d.stats.win_rate}%`;
+            document.getElementById('wins').innerText = d.stats.wins;
+            document.getElementById('losses').innerText = d.stats.losses;
+            document.getElementById('price').innerText = `BTCUSD: $${d.prices.btcusd.toFixed(2)}`;
+
+            const bEl = document.getElementById('bias');
+            bEl.innerText = d.bias;
+            bEl.className = `text-[10px] font-bold px-3 py-1 bg-black rounded border ${d.bias === 'BULLISH' ? 'border-emerald-500 text-emerald-500' : d.bias === 'BEARISH' ? 'border-rose-500 text-rose-500' : 'border-gray-800 text-gray-500'}`;
+
+            const list = document.getElementById('trade-list');
+            list.innerHTML = d.active_trades.length === 0 ? '<tr><td colspan="5" class="py-20 text-center text-gray-700 italic">SCANNING FOR H1 ALIGNED MSS...</td></tr>' : '';
+            d.active_trades.forEach(t => {
+                list.innerHTML += `<tr class="border-b border-gray-900/50 hover:bg-white/[0.01]">
+                    <td class="py-5 font-bold ${t.direction === 'LONG' ? 'text-emerald-500' : 'text-rose-500'}">${t.direction}</td>
+                    <td class="py-5 text-gray-400">$${t.entry.toFixed(2)}</td>
+                    <td class="py-5 text-rose-900">$${t.sl.toFixed(2)}</td>
+                    <td class="py-5 text-emerald-900">$${t.tp.toFixed(2)}</td>
+                    <td class="py-5 text-right"><span class="animate-pulse text-cyan-400 font-bold">LIVE SNIPE</span></td>
+                </tr>`;
+            });
+        };
+    </script>
+</body>
+</html>
